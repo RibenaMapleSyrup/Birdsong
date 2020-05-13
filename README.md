@@ -1,4 +1,4 @@
-# Birdsong-
+# Birdsong
 Play the sounds of birds recently spotted in the UK using eBird and Macaulay Library.
 
 To run the script you will need to create an account on eBird and request an API key. 
