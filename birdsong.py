@@ -8,15 +8,15 @@ import re
 import json
 from random import randrange
 import sched
+import subprocess
 api_key = 'insert your key here'
 
 class birds:
-    def __init__(self, queue, past_observations, update):
-        self.queue = queue
+    def __init__(self, observation_queue, past_observations):
+        self.observation_queue = observation_queue
         self.past_observations = past_observations
-        self.update = update
 
-def song(species):
+def get_birdsong(species):
     url = "https://ebird.org/species/" + species + ".html"
     response = requests.get(url)
     soup = BeautifulSoup(response.text)
@@ -30,28 +30,31 @@ def song(species):
     playsound(url2)
 
 
-def birdwatch(name):
-    todays_birds.update = get_observations(api_key, 'GB', back=1, max_results=100) 
-    if todays_birds.update != todays_birds.past_observations:
-        todays_birds.past_observations = [bird for bird in todays_birds.update if bird not in todays_birds.past_observations]
+def update_observations():
+    latest_observations = get_observations(api_key, 'GB', back=1, max_results=3) 
+    if latest_observations != todays_birds.past_observations:
+        todays_birds.past_observations = [bird for bird in latest_observations if bird not in todays_birds.past_observations]
     else:
         print("no new birds spotted")
-    scheduler.enter(3600, 1, birdwatch, (name,))
+        # wait an hour and hopefully some new birds will appear
+        time.sleep(3600)
     
-def chorus(name2):
-    if todays_birds.queue:
+def play_birdsong(name):
+    if todays_birds.observation_queue:
         time.sleep(randrange(300))
-        species = todays_birds.queue[0]["speciesCode"]
-        todays_birds.queue = list(filter(lambda i: i['speciesCode'] != species, todays_birds.queue))
-        song(species)
-        del birdsong[0]
-        print(len(todays_birds.queue))
-    scheduler.enter(3, 1, chorus, (name2,))
+        species = todays_birds.observation_queue[0]["speciesCode"]
+        todays_birds.observation_queue = list(filter(lambda i: i['speciesCode'] != species, todays_birds.observation_queue))
+        get_birdsong(species)
+        print(len(todays_birds.observation_queue))
+    else:
+        update_observations()
+    scheduler.enter(1, 1, play_birdsong, (name,))
 
-update = get_observations(api_key, 'GB', back=1, max_results=100)
-todays_birds = birds(update, update, update)
+# initialise observations
+observations = get_observations(api_key, 'GB', back=1, max_results=3)
+todays_birds = birds(observations, observations)
 
+# start birdwatching
 scheduler = sched.scheduler(time.time, time.sleep)
-scheduler.enter(1, 1, chorus, (scheduler,))
-scheduler.enter(1, 1, birdwatch, (scheduler,))
+scheduler.enter(1, 1, play_birdsong, (scheduler,))
 scheduler.run()
